@@ -1,0 +1,21 @@
+{
+  "command": "node",
+  "args": ["server.mjs"],
+  "restart_policy": "always",
+  "display_name": "思语中文 · Think-ZH",
+  "description": "一键切换模型思考语言（简体中文 / 默认英文），配置静态规则与每轮前置强化开关，实时预览注入指令。",
+  "has_web_ui": true,
+  "agent_permissions": {
+    "allows_user_interactions": true
+  },
+  "ui_config": {
+    "display_name": "思语中文 · Think-ZH",
+    "views": [
+      {
+        "title": "思语中文 · Think-ZH",
+        "path": "/",
+        "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE"
+      }
+    ]
+  }
+}

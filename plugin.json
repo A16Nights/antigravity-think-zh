@@ -1,0 +1,18 @@
+{
+  "name": "think-zh",
+  "displayName": "思语中文 · Think-ZH",
+  "version": "1.0.0",
+  "description": "Lock model reasoning/thinking language to Simplified Chinese (or switch back to default English) with dual-channel static rules + optional PreInvocation reinforcement, MCP tools, and a compact sidecar control panel.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "查看当前的思考语言设置与双通道状态",
+    "开启简体中文思考并启用每轮前置强化",
+    "把思考语言切回默认英文档位"
+  ],
+  "author": {
+    "name": "A16Nights",
+    "url": "https://github.com/A16Nights"
+  },
+  "homepage": "https://github.com/A16Nights/antigravity-think-zh",
+  "repository": "https://github.com/A16Nights/antigravity-think-zh"
+}

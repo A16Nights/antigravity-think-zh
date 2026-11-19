@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>思语中文 · Think-ZH</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --card-muted: #f8fafc;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-sub: #475569;
+      --text-dim: #64748b;
+      --accent: #4f46e5;
+      --accent-2: #0891b2;
+      --accent-soft: rgba(79, 70, 229, 0.1);
+      --accent-border: rgba(79, 70, 229, 0.35);
+      --ok: #059669;
+      --ok-soft: rgba(5, 150, 105, 0.12);
+      --warn: #d97706;
+      --warn-soft: rgba(217, 119, 6, 0.12);
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1120;
+        --card: #131c31;
+        --card-muted: #0f172a;
+        --border: #23304a;
+        --text: #e2e8f0;
+        --text-sub: #94a3b8;
+        --text-dim: #64748b;
+        --accent: #818cf8;
+        --accent-2: #22d3ee;
+        --accent-soft: rgba(129, 140, 248, 0.14);
+        --accent-border: rgba(129, 140, 248, 0.45);
+        --ok: #34d399;
+        --ok-soft: rgba(52, 211, 153, 0.14);
+        --warn: #fbbf24;
+        --warn-soft: rgba(251, 191, 36, 0.14);
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--accent-soft);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+
+    .badge.warn {
+      background: var(--warn-soft);
+      color: var(--warn);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    @media (max-width: 340px) {
+      .preset-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .preset-btn {
+      text-align: left;
+      padding: 10px 11px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--card-muted);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent-border);
+    }
+
+    .preset-btn:active {
+      transform: scale(0.99);
+    }
+
+    .preset-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .preset-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .preset-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--border);
+      color: var(--text-sub);
+    }
+
+    .preset-btn.active .preset-tag {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .preset-desc {
+      font-size: 11px;
+      color: var(--text-sub);
+      line-height: 1.4;
+    }
+
+    .switch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .switch-info {
+      min-width: 0;
+    }
+
+    .switch-label {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .switch-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.18s ease;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      transition: transform 0.18s ease;
+    }
+
+    .toggle input:checked + .slider {
+      background: var(--accent);
+    }
+
+    .toggle input:checked + .slider::before {
+      transform: translateX(18px);
+    }
+
+    .scope-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--card-muted);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .scope-box.hidden {
+      display: none;
+    }
+
+    .seg {
+      display: inline-flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--text-sub);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .seg button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 76px;
+      resize: vertical;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-muted);
+      color: var(--text);
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--card-muted);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-border);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn.danger {
+      color: var(--warn);
+      border-color: var(--warn-soft);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      background: var(--card-muted);
+      color: var(--text-sub);
+      border-radius: 7px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    pre.preview {
+      margin: 0;
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--card-muted);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .footer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 4px 2px 10px;
+    }
+
+    .footer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toast {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      background: var(--text);
+      color: var(--bg);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 99;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="miniGrad" x1="16" y1="14" x2="112" y2="114" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#4F46E5" />
+              <stop offset="100%" stop-color="#06B6D4" />
+            </linearGradient>
+          </defs>
+          <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#miniGrad)" />
+          <rect x="34" y="26" width="60" height="36" rx="7" stroke="#fff" stroke-width="6" />
+          <line x1="64" y1="27" x2="64" y2="61" stroke="#fff" stroke-width="5.5" stroke-linecap="round" />
+          <line x1="35" y1="44" x2="93" y2="44" stroke="#fff" stroke-width="5.5" stroke-linecap="round" />
+          <path d="M33 84 C37 78, 42 76, 46 83" stroke="#fff" stroke-width="6" stroke-linecap="round" />
+          <path d="M51 76 C51 90, 58 96, 75 96 L83 96" stroke="#fff" stroke-width="6" stroke-linecap="round" />
+          <circle cx="67" cy="77" r="4.2" fill="#E0F2FE" />
+          <circle cx="91" cy="81" r="4.2" fill="#fff" />
+        </svg>
+        <div>
+          <div class="brand-title">思语中文 · Think-ZH</div>
+          <div class="brand-sub">模型思考语言双通道控制器</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span id="langBadge" class="badge">加载中</span>
+        <span id="syncBadge" class="badge ok">已同步</span>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="section-title">
+        <span>思考语言档位</span>
+        <span id="updatedLabel" style="font-weight: 500; text-transform: none;"></span>
+      </div>
+      <div class="preset-grid">
+        <button type="button" class="preset-btn" data-lang="zh" id="btnLangZh">
+          <div class="preset-head">
+            <span>简体中文思考</span>
+            <span class="preset-tag">推荐</span>
+          </div>
+          <div class="preset-desc">强制内部推理从首字起使用简体中文，代码与路径保留原文。</div>
+        </button>
+        <button type="button" class="preset-btn" data-lang="en" id="btnLangEn">
+          <div class="preset-head">
+            <span>默认英文思考</span>
+            <span class="preset-tag">默认回退</span>
+          </div>
+          <div class="preset-desc">思考交给模型默认行为，仅保留回复跟随提问语言。</div>
+        </button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><span>注入通道</span></div>
+      <div class="switch-list">
+        <div class="switch-row">
+          <div class="switch-info">
+            <div class="switch-label">静态规则（rules/AGENTS.md）</div>
+            <div class="switch-sub">改动立即同步规则文件，常驻基础约束（推荐开启）</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="chkInjectPrompt" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div class="switch-info">
+            <div class="switch-label">新会话开场注入（SessionStart）</div>
+            <div class="switch-sub">新建对话首步追加一次高权重系统提醒</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="chkSessionStart" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div class="switch-info">
+            <div class="switch-label">每轮前置强化（PreInvocation）</div>
+            <div class="switch-sub">对长对话/大量英文工具日志下易切回英文思考的模型有效</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="chkPerTurn" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="scopeBox" class="scope-box hidden">
+        <span class="switch-sub" style="font-weight: 600;">每轮强化触发粒度</span>
+        <div class="seg">
+          <button type="button" id="scopeUserTurn" data-scope="per_user_turn">每轮提问一次</button>
+          <button type="button" id="scopeEveryInv" data-scope="every_invocation">每次调用模型</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <span>自定义指令（可选）</span>
+        <span id="customState" style="font-weight: 500; text-transform: none;">当前使用内置预设</span>
+      </div>
+      <textarea id="customTextInput" placeholder="留空则使用上方档位的内置指令；填写后将覆盖内置静态规则与每轮强化文案…"></textarea>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="btnSaveCustom">保存自定义指令</button>
+        <button type="button" class="btn" id="btnClearCustom">清空并用内置预设</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <span>实时注入预览</span>
+        <span id="previewChars" style="font-weight: 500; text-transform: none;">0 字</span>
+      </div>
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="rule">静态规则</button>
+        <button type="button" class="tab" data-tab="perTurn">每轮提示</button>
+        <button type="button" class="tab" data-tab="sessionStart">开场注入</button>
+      </div>
+      <pre class="preview" id="previewBox">加载中…</pre>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-actions">
+        <span>能力边界：思考语言属于模型自身推理行为，插件仅做提示词强力引导，不能在模型底层 100% 硬锁。</span>
+        <button type="button" class="btn danger" id="btnReset">恢复默认</button>
+      </div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const token = new URLSearchParams(window.location.search).get("token") || "";
+    let currentState = null;
+    let activeTab = "rule";
+    let resetConfirmTimer = null;
+    let awaitingResetConfirm = false;
+
+    function apiUrl(p) {
+      if (!token) return p;
+      const sep = p.includes("?") ? "&" : "?";
+      return `${p}${sep}token=${encodeURIComponent(token)}`;
+    }
+
+    async function apiFetch(p, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (token) headers["x-sidecar-token"] = token;
+      if (options.body && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+      const res = await fetch(apiUrl(p), { ...options, headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "请求失败");
+      return data;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => el.classList.remove("show"), 2000);
+    }
+
+    function renderPreview() {
+      if (!currentState) return;
+      const p = currentState.preview || {};
+      const box = document.getElementById("previewBox");
+      const chars = document.getElementById("previewChars");
+      if (activeTab === "rule") {
+        box.textContent = p.ruleMarkdown || "";
+        chars.textContent = `${p.ruleChars || 0} 字`;
+      } else if (activeTab === "perTurn") {
+        box.textContent = p.perTurnText || "（当前档位下常规不注入每轮提醒，仅在模式热切换瞬间提醒一次）";
+        chars.textContent = `${p.perTurnChars || 0} 字`;
+      } else {
+        box.textContent = p.sessionStartText || "";
+        chars.textContent = `${p.sessionStartChars || 0} 字`;
+      }
+    }
+
+    function render(state) {
+      currentState = state;
+      const cfg = state.config || {};
+      const isZh = cfg.thinkingLanguage !== "en";
+
+      const langBadge = document.getElementById("langBadge");
+      langBadge.textContent = cfg.customText?.trim()
+        ? "自定义指令"
+        : isZh
+          ? "简体中文思考"
+          : "默认英文思考";
+
+      const syncBadge = document.getElementById("syncBadge");
+      if (state.ruleSynced) {
+        syncBadge.textContent = "规则已同步";
+        syncBadge.className = "badge ok";
+      } else {
+        syncBadge.textContent = "待同步";
+        syncBadge.className = "badge warn";
+      }
+
+      document.getElementById("btnLangZh").classList.toggle("active", isZh);
+      document.getElementById("btnLangEn").classList.toggle("active", !isZh);
+
+      document.getElementById("chkInjectPrompt").checked = Boolean(cfg.injectPrompt);
+      document.getElementById("chkSessionStart").checked = Boolean(cfg.injectSessionStart);
+      document.getElementById("chkPerTurn").checked = Boolean(cfg.injectPerTurn);
+
+      const scopeBox = document.getElementById("scopeBox");
+      scopeBox.classList.toggle("hidden", !cfg.injectPerTurn);
+      document.getElementById("scopeUserTurn").classList.toggle("active", cfg.perTurnScope !== "every_invocation");
+      document.getElementById("scopeEveryInv").classList.toggle("active", cfg.perTurnScope === "every_invocation");
+
+      const customEl = document.getElementById("customTextInput");
+      if (document.activeElement !== customEl) {
+        customEl.value = cfg.customText || "";
+      }
+      document.getElementById("customState").textContent = cfg.customText?.trim()
+        ? "当前优先使用自定义指令"
+        : "当前使用内置预设";
+
+      const updatedEl = document.getElementById("updatedLabel");
+      if (cfg.updatedAt) {
+        try {
+          updatedEl.textContent = "更新于 " + new Date(cfg.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        } catch {
+          updatedEl.textContent = "";
+        }
+      } else {
+        updatedEl.textContent = "默认配置";
+      }
+
+      renderPreview();
+    }
+
+    async function patchConfig(patch, okMsg = "已保存并同步") {
+      try {
+        const next = await apiFetch("/api/config", {
+          method: "POST",
+          body: JSON.stringify(patch)
+        });
+        render(next);
+        showToast(okMsg);
+      } catch (err) {
+        showToast("保存失败: " + err.message);
+      }
+    }
+
+    async function loadState() {
+      try {
+        const data = await apiFetch("/api/state");
+        render(data);
+      } catch (err) {
+        document.getElementById("previewBox").textContent = "加载状态失败: " + err.message;
+      }
+    }
+
+    document.getElementById("btnLangZh").addEventListener("click", () => {
+      patchConfig({ thinkingLanguage: "zh" }, "已切换为简体中文思考");
+    });
+    document.getElementById("btnLangEn").addEventListener("click", () => {
+      patchConfig({ thinkingLanguage: "en" }, "已切换为默认英文思考");
+    });
+    document.getElementById("chkInjectPrompt").addEventListener("change", (e) => {
+      patchConfig({ injectPrompt: e.target.checked });
+    });
+    document.getElementById("chkSessionStart").addEventListener("change", (e) => {
+      patchConfig({ injectSessionStart: e.target.checked });
+    });
+    document.getElementById("chkPerTurn").addEventListener("change", (e) => {
+      patchConfig({ injectPerTurn: e.target.checked });
+    });
+    document.getElementById("scopeUserTurn").addEventListener("click", () => {
+      patchConfig({ perTurnScope: "per_user_turn" });
+    });
+    document.getElementById("scopeEveryInv").addEventListener("click", () => {
+      patchConfig({ perTurnScope: "every_invocation" });
+    });
+    document.getElementById("btnSaveCustom").addEventListener("click", () => {
+      const val = document.getElementById("customTextInput").value;
+      patchConfig({ customText: val }, val.trim() ? "自定义指令已生效" : "已恢复内置预设");
+    });
+    document.getElementById("btnClearCustom").addEventListener("click", () => {
+      document.getElementById("customTextInput").value = "";
+      patchConfig({ customText: "" }, "已恢复内置预设");
+    });
+
+    document.querySelectorAll(".tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeTab = btn.dataset.tab;
+        document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b === btn));
+        renderPreview();
+      });
+    });
+
+    const resetBtn = document.getElementById("btnReset");
+    resetBtn.addEventListener("click", async () => {
+      if (!awaitingResetConfirm) {
+        awaitingResetConfirm = true;
+        resetBtn.textContent = "再次点击确认重置";
+        clearTimeout(resetConfirmTimer);
+        resetConfirmTimer = setTimeout(() => {
+          awaitingResetConfirm = false;
+          resetBtn.textContent = "恢复默认";
+        }, 3000);
+        return;
+      }
+      clearTimeout(resetConfirmTimer);
+      awaitingResetConfirm = false;
+      resetBtn.textContent = "恢复默认";
+      try {
+        const next = await apiFetch("/api/reset", { method: "POST" });
+        render(next);
+        showToast("已恢复默认设置");
+      } catch (err) {
+        showToast("重置失败: " + err.message);
+      }
+    });
+
+    loadState();
+  </script>
+</body>
+</html>
