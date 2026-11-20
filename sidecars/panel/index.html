@@ -796,5 +796,157 @@
 
     loadState();
   </script>
+
+<!-- AGY_UPDATE_CHECKER_WIDGET -->
+<style>
+  .agy-upd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border, #2a334a);
+    background: var(--panel-2, var(--card, rgba(128,128,128,0.12)));
+    color: var(--muted, #94a3b8);
+    font-size: 11px;
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, border-color .15s, color .15s, transform .12s;
+  }
+  .agy-upd-btn:hover {
+    border-color: var(--accent, #58a6ff);
+    color: var(--text, #e6ecf8);
+    transform: translateY(-1px);
+  }
+  .agy-upd-btn:active { transform: scale(0.96); }
+  .agy-upd-btn.has-update {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.16);
+    color: #fbbf24;
+    font-weight: 600;
+  }
+  [data-theme="light"] .agy-upd-btn.has-update {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.14);
+  }
+  .agy-upd-toast {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.94);
+    color: #f8fafc;
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .agy-upd-toast.show { opacity: 1; }
+</style>
+<script>
+(function initAgyUpdateChecker() {
+  if (window.__agyUpdateCheckerInit) return;
+  window.__agyUpdateCheckerInit = true;
+  const tok = new URLSearchParams(location.search).get("token") || "";
+  let lastInfo = null;
+
+  function showTip(msg) {
+    if (typeof window.toast === "function") return window.toast(msg);
+    if (typeof window.showToast === "function") return window.showToast(msg);
+    let el = document.getElementById("agy-upd-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "agy-upd-toast";
+      el.className = "agy-upd-toast";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  function mountBtn() {
+    const btn = document.createElement("button");
+    btn.id = "agy-upd-btn";
+    btn.type = "button";
+    btn.className = "agy-upd-btn";
+    btn.textContent = "检查更新";
+    btn.title = "点击检查 GitHub 最新版本";
+    const host =
+      document.querySelector(".header-actions") ||
+      document.querySelector("header .row") ||
+      document.querySelector(".header .actions") ||
+      document.querySelector(".topbar-actions") ||
+      document.querySelector(".hdr-actions") ||
+      document.querySelector("header");
+    if (host) {
+      host.insertBefore(btn, host.firstChild);
+    } else {
+      btn.style.position = "fixed";
+      btn.style.top = "10px";
+      btn.style.right = "12px";
+      btn.style.zIndex = "999";
+      document.body.appendChild(btn);
+    }
+    btn.onclick = async () => {
+      if (lastInfo && lastInfo.hasUpdate && lastInfo.releaseUrl) {
+        try { await navigator.clipboard?.writeText(lastInfo.releaseUrl); } catch {}
+        try { window.open(lastInfo.releaseUrl, "_blank", "noopener"); } catch {}
+        showTip("发现新版本 v" + lastInfo.latestVersion + "，已复制发布页链接（git pull 即可更新）");
+        return;
+      }
+      btn.textContent = "检查中...";
+      const info = await fetchUpdate(true);
+      if (!info || !info.ok) {
+        showTip("检查更新失败：" + (info?.error || "网络异常"));
+      } else if (info.hasUpdate) {
+        showTip("发现新版本 v" + info.latestVersion + "（当前 v" + info.currentVersion + "），再次点击打开下载页");
+      } else {
+        showTip("已是最新版本 v" + info.currentVersion);
+      }
+    };
+    return btn;
+  }
+
+  async function fetchUpdate(force) {
+    try {
+      const headers = {};
+      if (tok) headers["X-Codeium-Sidecar-Token"] = tok;
+      const r = await fetch("/api/check-update" + (force ? "?force=1" : ""), { headers });
+      const data = await r.json();
+      lastInfo = data;
+      const btn = document.getElementById("agy-upd-btn");
+      if (btn && data) {
+        if (data.hasUpdate) {
+          btn.classList.add("has-update");
+          btn.textContent = "⬆ v" + data.latestVersion;
+          btn.title = "发现新版本 v" + data.latestVersion + "（当前 v" + data.currentVersion + "），点击打开/复制 Release 链接";
+        } else {
+          btn.classList.remove("has-update");
+          btn.textContent = "v" + (data.currentVersion || "?");
+          btn.title = data.ok ? ("已是最新版本 v" + data.currentVersion + "（点击重新检查）") : ("当前 v" + data.currentVersion + "（点击检查更新）");
+        }
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function start() {
+    mountBtn();
+    setTimeout(() => fetchUpdate(false), 600);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();
+</script>
+
 </body>
 </html>
