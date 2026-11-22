@@ -1,87 +1,84 @@
-# 思语中文 · Think-ZH
+# 思语中文 · Think-ZH (`antigravity-think-zh`)
 
 [English Documentation](./README.en.md)
 
-面向 Antigravity 的零依赖独立插件：引导模型使用**简体中文**进行内部思考与推理（`thinking / reasoning`），并保留代码、标识符、路径与报错原文，同时支持随时切回**默认英文思考**（仅保留回复语言跟随提问）。
+面向 **Google Antigravity** 的零依赖思考语言控制插件：引导模型从第一个字起全程使用**简体中文**进行内部思考与推理（`thinking / reasoning`），同时严格保留代码、标识符、文件路径、命令行与报错原文不强行翻译，并支持随时一键切回**默认英文思考**。
 
-> **致谢**：本插件的核心规则与双通道强化思路受开源项目 [`Len7183/DSH-Think-zh`](https://github.com/Len7183/DSH-Think-zh)（MIT）启发，并结合 Antigravity 原生插件架构（Rules + Lifecycle Hooks + MCP Server + Sidecar UI）重新设计与实现。
-
----
-
-## 核心特性
-
-1. **双档位思考语言预设（即时生效）**
-   - **简体中文思考（默认推荐，`zh`）**：要求模型从第一个字起全程使用简体中文推理，涵盖方案规划、工具调用前后推理与报错排查；代码、路径、标识符与命令保持原文；最终回复跟随用户提问语言。
-   - **默认英文思考（`en`）**：把思考语言交还模型默认行为，仅保留“最终回复跟随用户最近一条实质提问语言”的约束。
-2. **双通道强化机制**
-   - **静态规则通道（`rules/AGENTS.md`）**：配置改动后即时原子同步到插件规则文件，轻量且常驻生效。
-   - **生命周期 Hook 通道（`SessionStart` + `PreInvocation`）**：
-     - 可选新会话开场一次性提醒（`SessionStart`）；
-     - 可选每轮前置强化（`PreInvocation`），专为长对话或大量英文日志/代码上下文中容易漂移回英文思考的模型设计；
-     - 支持按「每轮用户提问一次（`per_user_turn`）」或「每次模型调用（`every_invocation`）」去重节流，避免刷屏与 Token 浪费；
-     - 支持对话中途热切换提醒（`zh` ↔ `en` 切换后下一轮自动同步告知模型）。
-3. **自定义指令覆盖**：支持传入 `customText` 替代内置文案，留空即自动恢复内置预设。
-4. **双入口即时控制**：提供 4 个前缀清晰的 MCP 工具与一个轻量侧栏控制面板（Sidecar UI）。
-5. **零第三方依赖**：纯 Node.js（`>=22.0.0`）原生 ESM 实现，无需 `npm install`。
+> **致谢**：本插件的核心规则与双通道强化思路受开源项目 [`Len7183/DSH-Think-zh`](https://github.com/Len7183/DSH-Think-zh)（MIT）启发，并结合 Antigravity 原生插件架构（Rules + Lifecycle Hooks + 外接模型智能识别 + MCP Server + Sidecar UI）重新设计与实现。
 
 ---
 
-## 安装方法
+## ✨ 功能全景
 
-将本仓库目录复制（或链接）到 Antigravity 全局插件目录下的 `think-zh`：
+### 1. 双档位思考语言预设（即时热切换）
+- **简体中文思考（默认推荐，`zh`）**：
+  - 要求模型内部思考与推理（涵盖任务分析、方案规划、工具调用前后推理、日志排查、报错诊断与最终自查）从第一个字起全程使用简体中文，禁止先用英文起草再翻译；
+  - 即使提问、代码、报错、路径或工具输出为英文，内部思考仍保持简体中文；
+  - 代码、标识符、文件路径、命令行与报错原文保持原样；最终回复跟随用户最近一条实质提问语言。
+- **默认英文思考（`en`）**：
+  - 将内部思考语言交还模型默认英文习惯，仅保留「最终回复跟随用户提问语言」的基础约束。
 
-- **Windows（PowerShell）**：
-  ```powershell
-  Copy-Item -Recurse -Force ".\antigravity-think-zh" "$env:USERPROFILE\.gemini\config\plugins\think-zh"
-  ```
-- **macOS / Linux**：
-  ```bash
-  cp -R ./antigravity-think-zh ~/.gemini/config/plugins/think-zh
-  ```
+### 2. 双通道强化与外接模型智能识别（省 Token 防漂移）
+- **静态规则通道（`rules/AGENTS.md`）**：切换档位或修改自定义文案后，即时原子同步写入插件规则文件，轻量常驻生效。
+- **生命周期 Hook 通道（`SessionStart` + `PreInvocation`）**：
+  - **新会话开场提醒（`SessionStart`）**：会话启动时注入一次思考语言锚点；
+  - **外接模型智能前置强化（`PreInvocation` + `external-model-guard`）**：
+    - 自动识别当前主模型：当使用外接自定义模型或长对话英文日志较多时，按设定粒度注入前置中文思考提醒，防止模型在大量英文代码/报错诱导下漂移回英文思考；
+    - 当使用 Antigravity 内置原生模型时，默认自动跳过每轮重复注入以节省 Token；
+  - **智能去重与热切换感知**：支持「每轮用户提问一次（`per_user_turn`）」或「每次模型调用（`every_invocation`）」粒度，并在对话中途切换 `zh` ↔ `en` 时自动在下一轮通知模型更新思考语言。
 
-安装后在 Antigravity 插件管理页确认 **思语中文 · Think-ZH** 已启用即可生效（无需额外安装依赖）。
+### 3. 自定义指令文案与实时预览
+- 支持在侧栏面板直接编写自定义思考语言指令（`customText`）覆盖内置文案，留空即可一键恢复官方推荐预设；
+- 面板底部提供 **「实时注入内容预览」**，清晰展示当前配置下实际写入 `AGENTS.md` 的静态规则与 Hook 前置注入文本。
+
+### 4. 苍蓝统一视觉与交互体系
+- **Sidecar + 独立 Web UI 双形态**：提供直观的右侧栏控制面板，点击顶栏 `Web UI` 可在系统默认浏览器中全屏打开。
+- **Neko Glass 毛玻璃界面 & 苍蓝主题色调中心**：支持深色/浅色切换、自定义毛玻璃下拉框（`AzureSelect`）、6 套官方主题预设 + 自定义双色 + 4 个自定义栏位跨插件同步、左侧栏快捷入口开关与 GitHub Release 在线更新检查。
 
 ---
 
-## 使用方式
+## 🚀 安装方法
 
-### 1. 侧栏可视化控制面板（Sidecar UI）
+> 前置要求：**Node.js >= 22.0.0**（零第三方 npm 依赖，纯 Node.js 原生 ESM 实现）。
 
-插件启用后，可在对话中点击链接打开侧栏面板（或请求助手打开）：
+将本仓库克隆到 Antigravity 全局插件目录（目录名固定为 `think-zh`）：
 
-```markdown
-[思语中文 · Think-ZH](sidecar://think-zh/panel/)
+```powershell
+# Windows (PowerShell)
+git clone https://github.com/A16Nights/antigravity-think-zh.git "$env:USERPROFILE\.gemini\config\plugins\think-zh"
+
+# macOS / Linux
+git clone https://github.com/A16Nights/antigravity-think-zh.git ~/.gemini/config/plugins/think-zh
 ```
 
-在面板中可以直接切换「简体中文思考 / 默认英文思考」、开关各个注入通道、编辑自定义指令并实时预览最终注入内容。
+重启或重载 Antigravity（`Ctrl+R`），在 **Plugins** 管理页确认 **思语中文 · Think-ZH** 已启用即可生效。
 
-### 2. MCP 工具
+---
+
+## 🧰 MCP 工具一览（4 个）
 
 | 工具名 | 用途 |
 | :--- | :--- |
-| `think_zh_status` | 查看当前档位、开关状态、每轮策略、规则文件同步状态及注入预览 |
-| `think_zh_set` | 修改档位（`zh`/`en`）、静态规则/Hook 开关、触发粒度或自定义指令 |
-| `think_zh_preview` | 不写入磁盘地预览指定配置下实际生成的规则与前置提示 |
-| `think_zh_reset` | 一键恢复默认配置并同步 `rules/AGENTS.md` |
-
-配置与轻量会话去重状态统一保存在 `~/.gemini/think-zh/`（可通过环境变量 `THINK_ZH_DATA_DIR` 覆盖），MCP、Hook 与 Sidecar 共享同一份配置，改动即时生效。
+| `think_zh_status` | 查看当前思考语言档位（`zh`/`en`）、各通道开关、去重策略、规则文件同步状态及注入预览 |
+| `think_zh_set` | 修改思考语言档位、静态规则开关、`SessionStart`/`PreInvocation` 开关、触发粒度或自定义指令文案 |
+| `think_zh_preview` | 不写入磁盘地预览指定参数组合下生成的静态规则与 Hook 注入文本 |
+| `think_zh_reset` | 一键恢复默认配置并自动同步 `rules/AGENTS.md` |
 
 ---
 
-## 本地测试
+## 📂 数据与配置存储
+
+- **思考语言配置与会话去重状态**：`~/.gemini/think-zh/config.json`、`state.json`
+- **苍蓝套件共享主题 / 左侧栏配置**：`~/.gemini/azure-theme.json`、`~/.gemini/azure-sidebar-nav.json`
+
+---
+
+## 🧪 本地自检
 
 ```bash
 node --test tests/think-zh.test.mjs
 ```
 
----
-
-## 能力边界说明
-
-思考语言本质上属于模型自身的推理行为。本插件通过高优先级规则文件、可选开场提醒与前置系统消息对模型进行强力引导，但**无法在模型底层 100% 强制锁死思考语言**。对于较长上下文或英文技术资料较多的任务，建议在面板或 `think_zh_set` 中开启 `injectPerTurn: true` 以提升中文思考稳定性。
-
----
-
-## 许可证
+## 📄 License
 
 [MIT License](./LICENSE)

@@ -1,8 +1,8 @@
 {
   "name": "think-zh",
   "displayName": "思语中文 · Think-ZH",
-  "version": "1.1.1",
-  "description": "Lock model reasoning/thinking language to Simplified Chinese (or switch back to default English) with dual-channel static rules + optional PreInvocation reinforcement, MCP tools, and a compact sidecar control panel.",
+  "version": "1.1.2",
+  "description": "思语中文（Think-ZH）— 模型内部思考语言控制插件：引导模型全程使用简体中文进行内部思考与推理（保留代码、标识符、路径与报错原文），支持随时一键切回默认英文思考；具备静态规则与外接模型智能 PreInvocation 双通道防漂移强化、按回合去重、自定义指令文案及实时注入预览面板。",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
     "查看当前的思考语言设置与双通道状态",
