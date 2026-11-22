@@ -1,4 +1,7 @@
 import { checkGithubUpdate } from "../../lib/update-checker.mjs";
+import { isLeftSidebarEnabled, setLeftSidebarEnabled, listOwnedPluginsNavState, registerSidecarRuntime, refreshAntigravityMcpServers, injectSidebarToggleWidget } from "../../lib/sidebar-nav.mjs";
+import { handleAzureThemeHttp } from "../../lib/azure-theme.mjs";
+import { injectAzureUiKit } from "../../lib/azure-ui-kit.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
@@ -82,7 +85,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
     const html = fs.readFileSync(HTML_PATH, "utf8");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(html);
+    res.end(injectAzureUiKit(injectSidebarToggleWidget(html, "think-zh"), "think-zh"));
     return;
   }
 
@@ -92,6 +95,31 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try {
+      if (await handleAzureThemeHttp(req, res)) return;
+    if (req.method === "GET" && pathname === "/api/sidebar-nav") {
+        sendJson(res, 200, {
+          ok: true,
+          pluginId: "think-zh",
+          showInLeftSidebar: isLeftSidebarEnabled("think-zh"),
+          plugins: listOwnedPluginsNavState()
+        });
+        return;
+      }
+      if (req.method === "POST" && pathname === "/api/sidebar-nav") {
+        const body = await readBody(req);
+        const targetId = String(body.pluginId || "think-zh").trim();
+        const nextVal = Boolean(body.showInLeftSidebar);
+        setLeftSidebarEnabled(targetId, nextVal);
+        const rf = await refreshAntigravityMcpServers();
+        sendJson(res, 200, {
+          ok: true,
+          pluginId: targetId,
+          showInLeftSidebar: nextVal,
+          refreshed: Boolean(rf?.ok),
+          plugins: listOwnedPluginsNavState()
+        });
+        return;
+      }
       if (req.method === "GET" && pathname === "/api/state") {
         sendJson(res, 200, store.getStatus());
         return;
@@ -122,6 +150,13 @@ server.listen(PORT, "127.0.0.1", () => {
     actualPort = addr.port;
   }
   console.log(`[think-zh panel] listening on http://127.0.0.1:${actualPort}`);
+  try {
+    const __a = server.address();
+    const __p = (__a && typeof __a === "object" && __a.port) ? __a.port : Number(PORT) || 0;
+    const __t = (process.env.ANTIGRAVITY_SIDECAR_UI_TOKEN || process.env.ANTIGRAVITY_SIDECAR_AUTH_TOKEN || process.env.ANTIGRAVITY_SIDECAR_WEB_TOKEN || "").trim();
+    const __u = __t ? `http://127.0.0.1:${__p}/?token=${encodeURIComponent(__t)}` : `http://127.0.0.1:${__p}/`;
+    registerSidecarRuntime("think-zh", { port: __p, url: __u });
+  } catch {}
 });
 
 function shutdown() {

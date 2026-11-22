@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { getSidebarToolDefinition, getSidebarResourceDefinition, getSidebarResourceUri, handleSidebarToolCall, buildSidebarResourceReadResult } from "./lib/sidebar-nav.mjs";
 import readline from "node:readline";
 import { ThinkZhStore, resolveConfig } from "./lib/store.mjs";
 
@@ -138,18 +139,38 @@ rl.on("line", (line) => {
       case "initialize":
         sendResponse(id, {
           protocolVersion: params?.protocolVersion || "2024-11-05",
-          capabilities: { tools: {} },
+          capabilities: { tools: {}, resources: {} },
           serverInfo: { name: "think-zh", version: "1.0.0" }
         });
         break;
       case "ping":
         sendResponse(id, {});
         break;
-      case "tools/list":
-        sendResponse(id, { tools: TOOLS });
+      case "tools/list": {
+        const sbTool = getSidebarToolDefinition("think-zh");
+        sendResponse(id, { tools: sbTool ? [...TOOLS, sbTool] : TOOLS });
         break;
+      }
+      case "resources/list": {
+        const sbRes = getSidebarResourceDefinition("think-zh");
+        sendResponse(id, { resources: sbRes ? [sbRes] : [] });
+        break;
+      }
+      case "resources/read": {
+        const uri = params?.uri;
+        if (uri === getSidebarResourceUri("think-zh")) {
+          sendResponse(id, buildSidebarResourceReadResult("think-zh"));
+        } else {
+          sendError(id, -32602, `Unknown resource: ${uri}`);
+        }
+        break;
+      }
       case "tools/call": {
         const toolName = params?.name;
+        if (toolName === "open_think_zh_ui") {
+          sendResponse(id, handleSidebarToolCall("think-zh"));
+          break;
+        }
         const toolArgs = params?.arguments || {};
         try {
           const result = dispatchTool(toolName, toolArgs);

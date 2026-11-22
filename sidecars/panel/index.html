@@ -71,9 +71,10 @@
 
     .header {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 10px 12px;
       padding: 12px 14px;
       background: var(--card);
       border: 1px solid var(--border);
@@ -85,7 +86,9 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      min-width: 0;
+      flex: 1 1 210px;
+      min-width: 190px;
+      order: 0;
     }
 
     .brand-icon {
@@ -112,9 +115,14 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      flex-shrink: 0;
+      flex: 1 1 auto;
       flex-wrap: wrap;
       justify-content: flex-end;
+      order: 1;
+    }
+
+    .header > :not(.brand):not(.badges) {
+      order: 2;
     }
 
     .badge {
@@ -495,9 +503,10 @@
           <div class="brand-sub">模型思考语言双通道控制器</div>
         </div>
       </div>
-      <div class="badges">
+      <div class="badges header-actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span id="langBadge" class="badge">加载中</span>
         <span id="syncBadge" class="badge ok">已同步</span>
+        <button type="button" id="btnThemeToggle" title="切换明暗主题" style="padding:4px 8px;font-size:13px;line-height:1;">☀️</button>
       </div>
     </header>
 
@@ -945,6 +954,33 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
+
+  // 明暗主题切换（默认暗色，与其余苍蓝插件统一）
+  (function initThinkZhTheme() {
+    const KEY = "think_zh_theme";
+    const apply = (mode) => {
+      const m = mode === "light" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", m);
+      const b = document.getElementById("btnThemeToggle");
+      if (b) {
+        b.textContent = m === "light" ? "🌙" : "☀️";
+        b.title = m === "light" ? "切换为暗色主题" : "切换为浅色主题";
+      }
+      try { localStorage.setItem(KEY, m); } catch {}
+    };
+    let saved = "dark";
+    try { saved = localStorage.getItem(KEY) || "dark"; } catch {}
+    const wire = () => {
+      apply(saved);
+      const b = document.getElementById("btnThemeToggle");
+      if (b) b.addEventListener("click", () => {
+        const cur = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+        apply(cur === "light" ? "dark" : "light");
+      });
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+    else wire();
+  })();
 })();
 </script>
 
