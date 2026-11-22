@@ -21,7 +21,7 @@
 </p>
 
 <p>
-  <a href="#features">✨ Features</a> &nbsp;·&nbsp; <a href="#architecture">🧩 Architecture</a> &nbsp;·&nbsp; <a href="#installation">🚀 Quick Start</a> &nbsp;·&nbsp; <a href="#mcp-tools">🧰 MCP Tools</a> &nbsp;·&nbsp; <a href="#storage">📂 Storage</a> &nbsp;·&nbsp; <a href="#azure-suite">🌌 Azure Suite</a>
+  <a href="#preview">🖼️ Preview</a> &nbsp;·&nbsp; <a href="#features">✨ Features</a> &nbsp;·&nbsp; <a href="#architecture">🧩 Architecture</a> &nbsp;·&nbsp; <a href="#installation">🚀 Quick Start</a> &nbsp;·&nbsp; <a href="#mcp-tools">🧰 MCP Tools</a> &nbsp;·&nbsp; <a href="#storage">📂 Storage</a> &nbsp;·&nbsp; <a href="#azure-suite">🌌 Azure Suite</a>
 </p>
 
 </div>
@@ -50,6 +50,19 @@ Choose <code>per_user_turn</code> or <code>every_invocation</code> granularity; 
 </td>
 </tr>
 </table>
+
+<h2 id="preview">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/sec-preview-en-dark.svg">
+  <img src="assets/readme/sec-preview-en-light.svg" alt="Interface Preview" width="100%">
+</picture>
+</h2>
+
+<p align="center">
+  <a href="assets/readme/preview-panel.png"><img src="assets/readme/preview-panel.png" alt="Think-ZH Control Panel Preview" width="520"></a>
+  <br><strong>Think-ZH · Thinking Language Switcher, Channel Controls &amp; Live Preview</strong>
+  <br><sub>Instant Chinese/English thinking toggle, granular static/hook channel switches, custom directives &amp; live injection preview</sub>
+</p>
 
 <h2 id="features">
 <picture>
