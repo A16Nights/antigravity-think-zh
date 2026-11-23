@@ -73,7 +73,7 @@ const TOOLS = [
   },
   {
     name: "think_zh_reset",
-    description: "将思语中文（Think-ZH）恢复为默认配置（简体中文思考 + 开启静态规则 + 关闭附加钩子 + 清空自定义文本），并同步 rules/AGENTS.md。",
+    description: "将思语中文（Think-ZH）恢复为默认配置（简体中文思考 + 开启静态规则 + 关闭附加 Hook + 清空自定义文本），并同步 rules/AGENTS.md。",
     inputSchema: {
       type: "object",
       properties: {}

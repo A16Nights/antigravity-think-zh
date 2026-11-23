@@ -26,7 +26,7 @@
 
 </div>
 
-面向 **Google Antigravity** 的零依赖思考语言控制插件。通过 **静态规则（`rules/AGENTS.md`）+ 生命周期钩子（`SessionStart` + `PreInvocation`）+ 外接模型智能识别 + MCP Server + Sidecar UI**，让模型的内部思维链（`thinking / reasoning`）稳定保持简体中文，不强行翻译代码、路径与命令，并支持随时热切换。
+面向 **Google Antigravity** 的零依赖思考语言控制插件。通过 **静态规则（`rules/AGENTS.md`）+ 生命周期 Hook（`SessionStart` + `PreInvocation`）+ 外接模型智能识别 + MCP Server + Sidecar UI**，让模型的内部思维链（`thinking / reasoning`）稳定保持简体中文，不强行翻译代码、路径与命令，并支持随时热切换。
 
 <table>
 <tr>
