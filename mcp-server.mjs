@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 import { getSidebarToolDefinition, getSidebarResourceDefinition, getSidebarResourceUri, handleSidebarToolCall, buildSidebarResourceReadResult } from "./lib/sidebar-nav.mjs";
+import { readPluginVersion } from "./lib/update-checker.mjs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import readline from "node:readline";
 import { ThinkZhStore, resolveConfig } from "./lib/store.mjs";
 
+const PLUGIN_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const store = new ThinkZhStore();
 
 const TOOLS = [
@@ -140,7 +144,7 @@ rl.on("line", (line) => {
         sendResponse(id, {
           protocolVersion: params?.protocolVersion || "2024-11-05",
           capabilities: { tools: {}, resources: {} },
-          serverInfo: { name: "think-zh", version: "1.0.0" }
+          serverInfo: { name: "think-zh", version: readPluginVersion(PLUGIN_ROOT) }
         });
         break;
       case "ping":

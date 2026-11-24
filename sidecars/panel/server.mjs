@@ -5,6 +5,7 @@ import { injectAzureUiKit } from "../../lib/azure-ui-kit.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { ThinkZhStore } from "../../lib/store.mjs";
 
@@ -29,31 +30,70 @@ function sendJson(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-function readBody(req) {
+function isAllowedLocalOrigin(req) {
+  const origin = String(req.headers?.origin || "").trim();
+  if (!origin || origin === "null") return true;
+  try {
+    const u = new URL(origin);
+    const h = u.hostname.toLowerCase();
+    return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+function safeTokenEqual(a, b) {
+  const ba = Buffer.from(String(a || ""), "utf8");
+  const bb = Buffer.from(String(b || ""), "utf8");
+  if (ba.length !== bb.length || ba.length === 0) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+
+function readBody(req, maxBytes = 512 * 1024) {
   return new Promise((resolve, reject) => {
-    let buf = "";
+    const chunks = [];
+    let total = 0;
+    let settled = false;
     req.on("data", (chunk) => {
-      buf += chunk;
-      if (buf.length > 512 * 1024) {
-        reject(new Error("Body too large"));
+      if (settled) return;
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf8");
+      total += buf.length;
+      if (total > maxBytes) {
+        settled = true;
+        req.destroy();
+        const err = new Error("Body too large");
+        err.statusCode = 413;
+        reject(err);
+        return;
       }
+      chunks.push(buf);
     });
     req.on("end", () => {
+      if (settled) return;
+      settled = true;
+      const raw = Buffer.concat(chunks).toString("utf8").trim();
       try {
-        resolve(buf ? JSON.parse(buf) : {});
+        resolve(raw ? JSON.parse(raw) : {});
       } catch {
-        reject(new Error("Invalid JSON"));
+        const err = new Error("Invalid JSON");
+        err.statusCode = 400;
+        reject(err);
       }
     });
-    req.on("error", reject);
+    req.on("error", (e) => {
+      if (settled) return;
+      settled = true;
+      reject(e);
+    });
   });
 }
 
 function checkAuth(req, url) {
+  if (!isAllowedLocalOrigin(req)) return false;
   if (!TOKEN) return true;
   const hdr = req.headers["x-codeium-sidecar-token"] || req.headers["x-sidecar-token"];
   const q = url.searchParams.get("token");
-  return hdr === TOKEN || q === TOKEN;
+  return safeTokenEqual(hdr, TOKEN) || safeTokenEqual(q, TOKEN);
 }
 
 // 若用户已有持久化配置，启动 Sidecar 时顺便确保 rules/AGENTS.md 处于同步状态
@@ -68,14 +108,6 @@ let actualPort = PORT;
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://127.0.0.1:${actualPort || 80}`);
   const pathname = url.pathname;
-
-  if (req.method === "GET" && pathname === "/api/check-update") {
-    const force = new URL(req.url, "http://127.0.0.1").searchParams.get("force") === "1";
-    const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-    const info = await checkGithubUpdate({ pluginRoot, repo: "A16Nights/antigravity-think-zh", force });
-    sendJson(res, 200, info);
-    return;
-  }
 
   if (pathname === "/healthz") {
     sendJson(res, 200, { ok: true, service: "think-zh-panel" });
@@ -95,6 +127,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try {
+      if (req.method === "GET" && pathname === "/api/check-update") {
+        const force = url.searchParams.get("force") === "1";
+        const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+        const info = await checkGithubUpdate({ pluginRoot, repo: "A16Nights/antigravity-think-zh", force });
+        sendJson(res, 200, info);
+        return;
+      }
       if (await handleAzureThemeHttp(req, res)) return;
     if (req.method === "GET" && pathname === "/api/sidebar-nav") {
         sendJson(res, 200, {
