@@ -22,7 +22,7 @@ description: Manage model thinking/reasoning language presets (Simplified Chines
 
 ## 侧栏可视化面板
 
-插件启用且 Sidecar 运行后，可在回复中提供一键打开链接：
+插件启用且 Sidecar 运行后，仅在用户需要打开面板调整配置时在回复中提供一键打开链接（Antigravity 2.35.1+ 会自动在侧栏展开）：
 
 ```markdown
 [思语中文 · Think-ZH](sidecar://think-zh/panel/)
