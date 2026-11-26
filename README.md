@@ -17,7 +17,7 @@
 </p>
 
 <p>
-  <strong>引导模型从第一个字起全程使用简体中文思考与推理，严格保留代码与报错原文，支持一键热切默认英文思考</strong>
+  <strong>专为外部推理模型准备：引导外接模型从第一个字起全程使用简体中文思考与推理，原生 Antigravity / Gemini 模型自动跳过</strong>
 </p>
 
 <p>
@@ -26,27 +26,33 @@
 
 </div>
 
-面向 **Google Antigravity** 的零依赖思考语言控制插件。通过 **静态规则（`rules/AGENTS.md`）+ 生命周期 Hook（`SessionStart` + `PreInvocation`）+ 外接模型智能识别 + MCP Server + Sidecar UI**，让模型的内部思维链（`thinking / reasoning`）稳定保持简体中文，不强行翻译代码、路径与命令，并支持随时热切换。
+> [!IMPORTANT]
+> **适用范围与原生 Gemini 限制说明**
+> - **专为外部模型准备**：本插件面向通过 **[苍蓝星轨 (Azure Orbit)](https://github.com/A16Nights/antigravity-azure-orbit)** 等方式挂载到 Antigravity 的**外部推理模型**（如 DeepSeek、Qwen、GLM、MiniMax 等直接透传原生 `reasoning_content` 的模型）。开启后**仅在使用外部模型时自动生效**，使用 Antigravity 原生模型时自动静默跳过，零额外 Token 消耗。
+> - **为何无法对原生 Gemini 生效**：Google Cloud Code 服务端不会将 Gemini 的原始内部思考下发给客户端，而是由云端 **Thought Summarizer** 将内部思考压缩改写成客观的英文第三人称摘要返回（并附带本地无法解密的加密 `thoughtSignature`）。因此任何客户端提示词或 Hook 都无法关闭或更改云端摘要器的输出语言。
+> - **原生 Gemini 怎么看中文思考**：若希望在原生 Gemini 会话中以中文阅读思考摘要，请使用苍蓝套件中的 **[苍蓝棱镜 (Azure Prism)](https://github.com/A16Nights/antigravity-azure-prism)** 进行按需翻译。
+
+面向 **Google Antigravity** 外部自定义推理模型的零依赖思考语言控制插件。通过 **外接模型智能守卫（`external-model-guard`）+ 生命周期 Hook（默认开启 `PreInvocation` 回合去重强化 + 可选 `SessionStart`）+ 可选静态兜底规则 + MCP Server + Sidecar UI**，让外接推理模型的内部思维链（`thinking / reasoning`）稳定保持简体中文，不强行翻译代码、路径与命令，并支持随时热切换。
 
 <table>
 <tr>
 <td width="50%" valign="top">
-<h4>💭 首字起简体中文思考</h4>
-涵盖任务分析、工具调用前后推理、日志排查与最终自查；严格保留代码、标识符、文件路径与报错原文，支持一键切回英文思考。
+<h4>💭 外部模型首字起中文思考</h4>
+专为透传原生 <code>reasoning_content</code> 的外接推理模型设计；涵盖任务分析、工具调用前后推理与报错诊断，严格保留代码与路径原文。
 </td>
 <td width="50%" valign="top">
-<h4>🛡️ 双通道强化 & 外接模型守卫</h4>
-静态规则 + Hook 双通道协同；外接模型或长英文日志下防漂移，Antigravity 原生模型自动跳过每轮重复注入以节省 Token。
+<h4>🛡️ 仅外部模型生效 · 原生自动跳过</h4>
+内置 <code>external-model-guard</code> 守卫，自动识别 <code>custom_models.json</code> 与外接模型标识；原生 Gemini / Antigravity 模型默认静默跳过，零无效注入。
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 <h4>👁️ 自定义文案 & 注入实时预览</h4>
-支持编写 <code>customText</code> 覆盖内置规则，留空一键还原；面板实时预览写入 <code>AGENTS.md</code> 与 Hook 的完整注入文本。
+支持编写 <code>customText</code> 覆盖内置规则，留空一键还原；面板实时预览每轮 Hook、开场注入与静态兜底的完整文本。
 </td>
 <td width="50%" valign="top">
-<h4>⚡ 热切换感知与智能去重</h4>
-支持 <code>per_user_turn</code> / <code>every_invocation</code> 两种粒度，对话中途切换 <code>zh ↔ en</code> 自动通知模型即时更新。
+<h4>⚡ 热切换感知与回合级去重</h4>
+支持 <code>per_user_turn</code> / <code>every_invocation</code> 两种粒度，同轮多步工具调用自动去重，中途切换 <code>zh ↔ en</code> 自动通知模型即时更新。
 </td>
 </tr>
 </table>
@@ -79,12 +85,13 @@
 - **默认英文思考（`en`）**：
   - 将内部思考语言交还模型默认英文习惯，仅保留「最终回复跟随用户提问语言」的基础约束。
 
-### 2. 双通道强化与外接模型智能识别（省 Token 防漂移）
-- **静态规则通道（`rules/AGENTS.md`）**：切换档位或修改自定义文案后，即时原子同步写入插件规则文件，轻量常驻生效。
-- **生命周期 Hook 通道（`SessionStart` + `PreInvocation`）**：
-  - **新会话开场提醒（`SessionStart`）**：会话启动时注入一次思考语言锚点；
-  - **外接模型智能前置强化（`PreInvocation` + `external-model-guard`）**：自动识别当前主模型，在使用外接自定义模型或长对话英文日志较多时注入前置中文思考提醒防止漂移；使用 Antigravity 原生模型时默认跳过每轮重复注入以节省 Token；
-  - **智能去重与热切换感知**：支持「每轮用户提问一次（`per_user_turn`）」或「每次模型调用（`every_invocation`）」粒度，并在对话中途切换 `zh` ↔ `en` 时自动在下一轮通知模型更新思考语言。
+### 2. 仅外部模型生效的智能守卫（原生模型零干扰）
+- **每轮前置强化（`PreInvocation` + `external-model-guard`，默认开启）**：
+  - 自动读取 `~/.gemini/antigravity/custom_models.json` 与外接模型路径特征，**仅在使用外部自定义模型时触发注入**；
+  - 使用 Antigravity 原生模型（含原生 Gemini）时直接静默跳过返回 `{}`，零额外 Token 消耗；
+  - **智能去重与热切换感知**：默认 `per_user_turn`（每轮用户提问注入一次，同轮工具回调自动去重），可选 `every_invocation`，并在对话中途切换 `zh` ↔ `en` 时自动通知模型更新思考语言。
+- **新会话开场提醒（`SessionStart` + `external-model-guard`，可选）**：同样仅在识别到外部模型时于会话首步注入一次思考语言锚点。
+- **静态全局规则兜底（`rules/AGENTS.md`，默认关闭）**：由于宿主会无差别将静态规则加载给包括原生 Gemini 在内的所有模型，默认保持关闭；仅在确需全模型静态兼容兜底时手动开启。
 
 ### 3. 自定义指令文案与实时预览
 - 支持在侧栏面板直接编写自定义思考语言指令（`customText`）覆盖内置文案，留空即可一键恢复官方推荐预设；
@@ -104,11 +111,11 @@
 ```mermaid
 flowchart LR
   UI["思语中文 Sidecar / MCP"] -->|"zh ↔ en 热切换"| CFG["~/.gemini/think-zh/config.json"]
-  CFG -->|"原子同步"| RULE["静态通道<br/>rules/AGENTS.md"]
-  CFG --> HOOK["Hook 通道<br/>SessionStart + PreInvocation"]
-  HOOK -->|"external-model-guard"| DEC{"外接模型或档位变更?"}
-  DEC -->|"是"| INJ["按粒度去重注入中文思考提醒"]
-  DEC -->|"否（原生模型）"| SKIP["依靠静态规则 · 零额外开销"]
+  CFG --> HOOK["默认主通道<br/>PreInvocation / SessionStart"]
+  HOOK -->|"external-model-guard"| DEC{"当前是否为外接自定义模型?"}
+  DEC -->|"是（DeepSeek / Qwen 等）"| INJ["按回合去重注入中文思考提醒"]
+  DEC -->|"否（原生 Gemini 等）"| SKIP["自动静默跳过 · 零额外开销"]
+  CFG -.->|"默认关闭 · 可选兜底"| RULE["静态全局规则<br/>rules/AGENTS.md"]
 ```
 
 <h2 id="installation">
@@ -192,7 +199,7 @@ node --test tests/think-zh.test.mjs
 | 🏛️ **苍蓝回廊** | [antigravity-azure-corridor](https://github.com/A16Nights/antigravity-azure-corridor) | 只读原生会话 FTS5 全文检索、自定义项目分组、优先级标签与独立安全归档箱 |
 | 🌌 **蓝汐 · 潮汐认知图谱** | [antigravity-lanxi-memory](https://github.com/A16Nights/antigravity-lanxi-memory) | 五层纯 Markdown 真源记忆、CJK FTS5、潮汐遗忘曲线与交互式潮汐星海图谱 |
 | 💎 **苍蓝魂匣** | [antigravity-soul-md](https://github.com/A16Nights/antigravity-soul-md) | 多人设卡热切换、工作区专属绑定、外接模型智能防掉线锚点与分层文件记忆 |
-| 💭 **思语中文** &nbsp;`✦ 当前仓库` | [antigravity-think-zh](https://github.com/A16Nights/antigravity-think-zh) | 内部思考语言简体中文 / 英文双档热切换、双通道防漂移与实时注入预览 |
+| 💭 **思语中文** &nbsp;`✦ 当前仓库` | [antigravity-think-zh](https://github.com/A16Nights/antigravity-think-zh) | 面向外部推理模型的中文思考语言控制器（原生模型自动跳过、回合去重防漂移） |
 | 🔮 **苍蓝棱镜** | [antigravity-azure-prism](https://github.com/A16Nights/antigravity-azure-prism) | 原生 MCP App 思维链实时观测、免密钥零 Token 机翻与外部模型双通道译文 |
 | 🪄 **苍蓝魔杖** | [antigravity-azure-wand](https://github.com/A16Nights/antigravity-azure-wand) | Windows 桌面与网页低打扰操控台、独立输入 15 状态 AI 光标、套装画廊混搭与外部光标导入 |
 

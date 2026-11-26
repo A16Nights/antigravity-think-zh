@@ -17,7 +17,7 @@
 </p>
 
 <p>
-  <strong>Keep internal model reasoning in Simplified Chinese from the very first character while preserving raw code & errors, with instant English fallback</strong>
+  <strong>Built for external custom reasoning models: keep internal reasoning in Simplified Chinese from char #1 while automatically skipping native Antigravity / Gemini models</strong>
 </p>
 
 <p>
@@ -26,27 +26,33 @@
 
 </div>
 
-A zero-dependency thinking-language controller for **Google Antigravity**. Uses **static rules (`rules/AGENTS.md`) + lifecycle hooks (`SessionStart` & `PreInvocation`) + external-model smart guard + MCP Server + Sidecar UI** to keep model `thinking / reasoning` in Simplified Chinese without mistranslating code, paths, or error logs, and lets you hot-switch back to default English anytime.
+> [!IMPORTANT]
+> **Scope & Why Native Gemini Is Not Affected**
+> - **Built for External Custom Models**: Think-ZH targets external reasoning models mounted into Antigravity (e.g., via **[Azure Orbit](https://github.com/A16Nights/antigravity-azure-orbit)** such as DeepSeek, Qwen, GLM, or MiniMax that stream native `reasoning_content`). When enabled, it **only activates on external custom models** and silently skips native Antigravity models with zero extra token overhead.
+> - **Why It Cannot Work on Native Gemini**: Google Cloud Code does not send Gemini's raw internal thoughts to the client. Instead, Google's server-side **Thought Summarizer** rewrites internal reasoning into an English third-person summary (alongside an encrypted `thoughtSignature` that cannot be decrypted locally). Client-side prompts or hooks cannot disable or change the summarizer's output language.
+> - **How to Read Native Gemini Thoughts in Chinese**: Use **[Azure Prism](https://github.com/A16Nights/antigravity-azure-prism)** to translate the returned thought summaries on demand.
+
+A zero-dependency thinking-language controller for **external custom reasoning models** in **Google Antigravity**. Uses **`external-model-guard` + lifecycle hooks (`PreInvocation` enabled by default with per-turn deduplication + optional `SessionStart`) + optional static fallback + MCP Server + Sidecar UI** to keep external model `thinking / reasoning` in Simplified Chinese without mistranslating code, paths, or error logs, and lets you hot-switch back to default English anytime.
 
 <table>
 <tr>
 <td width="50%" valign="top">
-<h4>💭 Chinese Reasoning from Char #1</h4>
-Covers planning, tool reasoning, log debugging, and self-checks in Simplified Chinese while keeping code, identifiers, paths, and raw errors verbatim.
+<h4>💭 Chinese Reasoning for External Models</h4>
+Designed for external models streaming native <code>reasoning_content</code>; covers planning, tool reasoning, and debugging while keeping code and raw errors verbatim.
 </td>
 <td width="50%" valign="top">
-<h4>🛡️ Dual-Channel Anti-Drift Guard</h4>
-Combines static rules with smart hooks: prevents English drift on external models and long logs, while skipping redundant per-turn injection on native models.
+<h4>🛡️ External-Model-Only Guard</h4>
+Built-in <code>external-model-guard</code> detects <code>custom_models.json</code> and external model IDs; native Gemini / Antigravity models are skipped silently with zero overhead.
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 <h4>👁️ Custom Directives & Live Preview</h4>
-Override built-in directives with <code>customText</code> (clear to restore defaults) and preview exact <code>AGENTS.md</code> and Hook payloads live in the panel.
+Override built-in directives with <code>customText</code> (clear to restore defaults) and preview exact Hook and optional static fallback payloads live in the panel.
 </td>
 <td width="50%" valign="top">
 <h4>⚡ Hot-Switch Aware & Deduplicated</h4>
-Choose <code>per_user_turn</code> or <code>every_invocation</code> granularity; mid-session <code>zh ↔ en</code> switches notify the model automatically on the next turn.
+Choose <code>per_user_turn</code> or <code>every_invocation</code> granularity; mid-session <code>zh ↔ en</code> switches notify the external model automatically on the next turn.
 </td>
 </tr>
 </table>
@@ -79,12 +85,13 @@ Choose <code>per_user_turn</code> or <code>every_invocation</code> granularity; 
 - **Default English Thinking (`en`)**:
   - Restores the model's native English reasoning habit while keeping final responses aligned with the user's language.
 
-### 2. Dual-Channel Reinforcement & External-Model Guard
-- **Static Rules Channel (`rules/AGENTS.md`)**: Atomically updated whenever presets or custom directives change.
-- **Lifecycle Hooks (`SessionStart` + `PreInvocation`)**:
-  - `SessionStart`: Anchors the active thinking language at session start;
-  - `PreInvocation` + `external-model-guard`: Reinforces Chinese reasoning for external custom models and long English log contexts while skipping redundant per-turn injection on native Antigravity models;
-  - **Smart Deduplication & Hot-Switch Awareness**: Supports `per_user_turn` and `every_invocation` granularity and detects mid-conversation `zh ↔ en` changes automatically.
+### 2. External-Model-Only Guard (Zero Interference on Native Models)
+- **Per-Turn Pre-Injection (`PreInvocation` + `external-model-guard`, enabled by default)**:
+  - Inspects `~/.gemini/antigravity/custom_models.json` and external model path patterns, activating **only when an external custom model is active**;
+  - Silently returns `{}` for native Antigravity / Gemini models with zero extra tokens;
+  - **Smart Deduplication & Hot-Switch Awareness**: Defaults to `per_user_turn` (once per user turn, skipping repeated tool callbacks), optionally `every_invocation`, and detects mid-conversation `zh ↔ en` switches automatically.
+- **Session Start Hook (`SessionStart` + `external-model-guard`, optional)**: Also guarded to activate only when an external custom model is detected.
+- **Static Global Fallback (`rules/AGENTS.md`, disabled by default)**: Because Antigravity loads static rules into every session including native Gemini, this channel defaults to off and is kept purely as an opt-in fallback.
 
 ### 3. Custom Directives & Live Injection Preview
 - Write custom thinking-language instructions (`customText`) right inside the panel (leave blank to restore defaults) and inspect the exact live output for both `AGENTS.md` and Hooks.
@@ -103,11 +110,11 @@ Choose <code>per_user_turn</code> or <code>every_invocation</code> granularity; 
 ```mermaid
 flowchart LR
   UI["Think-ZH Sidecar / MCP"] -->|"zh ↔ en Hot Switch"| CFG["~/.gemini/think-zh/config.json"]
-  CFG -->|"Atomic Sync"| RULE["Static Channel<br/>rules/AGENTS.md"]
-  CFG --> HOOK["Hook Channel<br/>SessionStart + PreInvocation"]
-  HOOK -->|"external-model-guard"| DEC{"External Model or Mode Changed?"}
-  DEC -->|"Yes"| INJ["Inject Deduplicated Reminder"]
-  DEC -->|"No (Native)"| SKIP["Static Rules Only · Zero Overhead"]
+  CFG --> HOOK["Default Primary Channel<br/>PreInvocation / SessionStart"]
+  HOOK -->|"external-model-guard"| DEC{"Active External Custom Model?"}
+  DEC -->|"Yes (DeepSeek / Qwen / etc.)"| INJ["Inject Deduplicated Reminder"]
+  DEC -->|"No (Native Gemini / etc.)"| SKIP["Silent Skip · Zero Overhead"]
+  CFG -.->|"Off by Default · Opt-in"| RULE["Static Global Fallback<br/>rules/AGENTS.md"]
 ```
 
 <h2 id="installation">
@@ -191,7 +198,7 @@ All **9 Azure Suite plugins** share a unified **Neko Glass UI**, synchronized **
 | 🏛️ **Azure Corridor** | [antigravity-azure-corridor](https://github.com/A16Nights/antigravity-azure-corridor) | Read-only FTS5 conversation search, custom project groups, priority tags & safe archive |
 | 🌌 **Lanxi Memory** | [antigravity-lanxi-memory](https://github.com/A16Nights/antigravity-lanxi-memory) | 5-layer Markdown cognitive graph, CJK FTS5, tidal forgetting curves & starfield UI |
 | 💎 **Soul.md Studio** | [antigravity-soul-md](https://github.com/A16Nights/antigravity-soul-md) | Hot-swappable persona cards, workspace binding, external-model anchor & layered memory |
-| 💭 **Think-ZH** &nbsp;`✦ This Repo` | [antigravity-think-zh](https://github.com/A16Nights/antigravity-think-zh) | Simplified Chinese / English reasoning switcher with dual-channel anti-drift hooks |
+| 💭 **Think-ZH** &nbsp;`✦ This Repo` | [antigravity-think-zh](https://github.com/A16Nights/antigravity-think-zh) | Chinese/English reasoning controller for external custom models (auto-skips native models) |
 | 🔮 **Azure Prism** | [antigravity-azure-prism](https://github.com/A16Nights/antigravity-azure-prism) | Native MCP App Chain-of-Thought viewer with keyless zero-token MT & LLM translation |
 | 🪄 **Azure Wand** | [antigravity-azure-wand](https://github.com/A16Nights/antigravity-azure-wand) | Low-intrusion Windows desktop & web automation with 15-state independent AI cursor, pack gallery & importer |
 

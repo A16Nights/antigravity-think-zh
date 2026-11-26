@@ -12,7 +12,7 @@ const store = new ThinkZhStore();
 const TOOLS = [
   {
     name: "think_zh_status",
-    description: "查看思语中文（Think-ZH）当前思考语言档位、各通道开关、每轮策略、规则文件同步状态与注入预览。",
+    description: "查看思语中文（Think-ZH）当前思考语言档位、各通道开关、每轮策略、规则文件同步状态与注入预览。注意：本插件专为外部自定义推理模型设计，开启后默认仅对外部模型生效，无法对原生 Gemini 生效（Google 云端 Thought Summarizer 不下发原始思考）。",
     inputSchema: {
       type: "object",
       properties: {}
@@ -20,7 +20,7 @@ const TOOLS = [
   },
   {
     name: "think_zh_set",
-    description: "设置思语中文（Think-ZH）的思考语言档位、静态规则开关、会话开场/每轮强化开关或自定义指令，并立即持久化且同步 rules/AGENTS.md。",
+    description: "设置思语中文（Think-ZH）的思考语言档位、每轮强化/开场注入（均仅对外部模型生效）、静态全局规则兜底开关或自定义指令，并立即持久化。注意：无法改变原生 Gemini 的云端英文思考摘要。",
     inputSchema: {
       type: "object",
       properties: {
@@ -31,15 +31,15 @@ const TOOLS = [
         },
         injectPrompt: {
           type: "boolean",
-          description: "是否启用静态规则注入（写入 rules/AGENTS.md）"
+          description: "是否启用静态全局规则兜底（写入 rules/AGENTS.md；默认关闭，开启后宿主会无差别加载给含原生 Gemini 在内的所有模型）"
         },
         injectSessionStart: {
           type: "boolean",
-          description: "是否启用新会话启动时的一次性开场注入（SessionStart Hook）"
+          description: "是否启用新会话启动时的一次性开场注入（SessionStart Hook，仅对外部自定义模型生效）"
         },
         injectPerTurn: {
           type: "boolean",
-          description: "是否启用每轮前置强化（PreInvocation Hook），增强长对话防漂移"
+          description: "是否启用每轮前置强化（PreInvocation Hook，默认开启，仅对外部自定义模型生效，Antigravity 原生模型自动跳过）"
         },
         perTurnScope: {
           type: "string",
@@ -77,7 +77,7 @@ const TOOLS = [
   },
   {
     name: "think_zh_reset",
-    description: "将思语中文（Think-ZH）恢复为默认配置（简体中文思考 + 开启静态规则 + 关闭附加 Hook + 清空自定义文本），并同步 rules/AGENTS.md。",
+    description: "将思语中文（Think-ZH）恢复为默认配置（简体中文思考 + 开启仅外部模型生效的 PreInvocation 回合去重强化 + 关闭静态全局规则与 SessionStart + 清空自定义文本），并同步 rules/AGENTS.md。",
     inputSchema: {
       type: "object",
       properties: {}

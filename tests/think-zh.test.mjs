@@ -16,6 +16,7 @@ import {
   normalizeThinkingLanguage,
   resolveConfig
 } from "../lib/store.mjs";
+import { isExternalModel } from "../lib/external-model-guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(__dirname, "..");
@@ -24,16 +25,30 @@ function makeTempEnv(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "think-zh-test-"));
   const dataDir = path.join(root, "data");
   const pluginDir = path.join(root, "plugin");
+  const customModelsPath = path.join(root, "custom_models.json");
   fs.mkdirSync(path.join(pluginDir, "rules"), { recursive: true });
   fs.writeFileSync(
     path.join(pluginDir, "rules", "AGENTS.md"),
     buildRuleMarkdown(DEFAULT_CONFIG),
     "utf8"
   );
+  fs.writeFileSync(
+    customModelsPath,
+    JSON.stringify({
+      models: [
+        {
+          name: "models/deepseek-r1-custom",
+          displayName: "DeepSeek R1 Custom",
+          externalModelName: "deepseek-reasoner"
+        }
+      ]
+    }),
+    "utf8"
+  );
   t.after(() => {
     fs.rmSync(root, { recursive: true, force: true });
   });
-  return { root, dataDir, pluginDir };
+  return { root, dataDir, pluginDir, customModelsPath };
 }
 
 function runHookProcess(scriptRelPath, stdinText, envOverrides = {}) {
@@ -80,7 +95,7 @@ test("normalize and resolveConfig handle casing, trimming, and invalid fallbacks
 
   assert.deepEqual(resolved, {
     thinkingLanguage: "en",
-    injectPrompt: true,
+    injectPrompt: false,
     injectSessionStart: true,
     injectPerTurn: true,
     perTurnScope: "every_invocation",
@@ -89,22 +104,44 @@ test("normalize and resolveConfig handle casing, trimming, and invalid fallbacks
   });
 });
 
+test("isExternalModel distinguishes external custom models from native Gemini/Antigravity models", (t) => {
+  const { customModelsPath } = makeTempEnv(t);
+  const opts = { customModelsPath };
+
+  // 原生模型与空值 -> false
+  assert.equal(isExternalModel({}, opts), false);
+  assert.equal(isExternalModel({ modelName: "" }, opts), false);
+  assert.equal(isExternalModel({ modelName: "auto" }, opts), false);
+  assert.equal(isExternalModel({ modelName: "gemini-4-neon-high" }, opts), false);
+  assert.equal(isExternalModel({ modelName: "claude-opus-4-6" }, opts), false);
+
+  // 外接自定义模型 -> true
+  assert.equal(isExternalModel({ modelName: "models/deepseek-r1-custom" }, opts), true);
+  assert.equal(isExternalModel({ modelName: "deepseek-reasoner" }, opts), true);
+  assert.equal(isExternalModel({ modelName: "models/openrouter/qwen-qwq" }, opts), true);
+  assert.equal(isExternalModel({ modelName: "custom-model--high" }, opts), true);
+});
+
 test("ThinkZhStore persists config, syncs rules/AGENTS.md, and resets cleanly", (t) => {
   const { dataDir, pluginDir } = makeTempEnv(t);
   const store = new ThinkZhStore({ dataDir, pluginDir });
 
   const initial = store.getStatus();
   assert.equal(initial.config.thinkingLanguage, "zh");
+  assert.equal(initial.config.injectPrompt, false);
+  assert.equal(initial.config.injectPerTurn, true);
+  assert.equal(initial.targetScope, "external_models_only");
   assert.equal(initial.ruleSynced, true);
-  assert.match(initial.preview.ruleMarkdown, /简体中文/);
+  assert.match(initial.preview.ruleMarkdown, /静态全局规则已关闭/);
 
   // 写入不同步的规则文件时可检测 ruleSynced = false
   fs.writeFileSync(store.rulePath, "stale", "utf8");
   assert.equal(store.getStatus().ruleSynced, false);
 
-  // 切换到 en 档位
-  const enStatus = store.updateConfig({ thinkingLanguage: "en" });
+  // 开启静态兜底并切换到 en 档位
+  const enStatus = store.updateConfig({ thinkingLanguage: "en", injectPrompt: true });
   assert.equal(enStatus.config.thinkingLanguage, "en");
+  assert.equal(enStatus.config.injectPrompt, true);
   assert.equal(enStatus.ruleSynced, true);
   assert.match(fs.readFileSync(store.rulePath, "utf8"), /思考语言保持模型默认行为/);
   assert.equal(buildPerTurnText(enStatus.config), "");
@@ -118,91 +155,173 @@ test("ThinkZhStore persists config, syncs rules/AGENTS.md, and resets cleanly", 
 
   // 关闭静态规则注入
   const offStatus = store.updateConfig({ injectPrompt: false });
-  assert.equal(fs.readFileSync(store.rulePath, "utf8"), "<!-- think-zh: 静态规则注入已关闭 -->\n");
+  assert.match(fs.readFileSync(store.rulePath, "utf8"), /静态全局规则已关闭/);
   assert.equal(offStatus.ruleSynced, true);
 
-  // 重置配置
+  // 重置配置（恢复默认：仅外部模型 PreInvocation 开启，静态规则关闭）
   const resetStatus = store.resetConfig();
   assert.equal(resetStatus.config.thinkingLanguage, "zh");
-  assert.equal(resetStatus.config.injectPrompt, true);
+  assert.equal(resetStatus.config.injectPrompt, false);
+  assert.equal(resetStatus.config.injectPerTurn, true);
   assert.equal(resetStatus.config.customText, "");
   assert.equal(resetStatus.ruleSynced, true);
   assert.equal(fs.readFileSync(store.rulePath, "utf8"), buildRuleMarkdown(DEFAULT_CONFIG));
 });
 
-test("evaluatePreInvocation handles per_user_turn dedup, every_invocation, and zh<->en hot switch", (t) => {
-  const { dataDir, pluginDir } = makeTempEnv(t);
+test("evaluatePreInvocation enforces external-model-only guard, per_user_turn dedup, every_invocation, and zh<->en hot switch", (t) => {
+  const { dataDir, pluginDir, customModelsPath } = makeTempEnv(t);
   const store = new ThinkZhStore({ dataDir, pluginDir });
+  const evalOpts = { customModelsPath };
+  const extModel = "models/deepseek-r1-custom";
 
-  // injectPerTurn 关闭时同语言不注入，但记录状态
-  let res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "你好", invocationNum: 1 });
+  // 原生 Gemini 模型即使开启 injectPerTurn 也必须静默跳过
+  let res = store.evaluatePreInvocation(
+    { conversationId: "native-c1", modelName: "gemini-4-neon-high", lastUserInput: "你好", invocationNum: 1 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, false);
+  assert.equal(res.reason, "native_model_skipped");
+  assert.equal(res.externalModel, false);
+
+  // 关闭 injectPerTurn 时外部模型同语言不注入，但记录状态
+  store.updateConfig({ injectPerTurn: false });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "你好", invocationNum: 1 },
+    evalOpts
+  );
+  assert.equal(res.shouldInject, false);
+  assert.equal(res.externalModel, true);
 
   // 开启 per_user_turn 模式
   store.updateConfig({ injectPerTurn: true, perTurnScope: "per_user_turn" });
 
   // 同一轮新输入第 1 次调用 -> 注入
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "帮我看下这个报错", invocationNum: 1 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "帮我看下这个报错", invocationNum: 1 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, true);
   assert.equal(res.reason, "per_user_turn");
   assert.match(res.text, /简体中文/);
 
   // 同轮工具回调第 2 次调用（同输入） -> 去重跳过
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "帮我看下这个报错", invocationNum: 2 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "帮我看下这个报错", invocationNum: 2 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, false);
 
   // 连续重复相同文本但 invocationNum 重置为 1（新用户轮次）-> 注入
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "帮我看下这个报错", invocationNum: 1 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "帮我看下这个报错", invocationNum: 1 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, true);
 
   // 切换为 every_invocation -> 同轮第 2 步也会注入
   store.updateConfig({ perTurnScope: "every_invocation" });
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "继续下一步", invocationNum: 1 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "继续下一步", invocationNum: 1 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, true);
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "继续下一步", invocationNum: 2 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "继续下一步", invocationNum: 2 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, true);
   assert.equal(res.reason, "every_invocation");
 
   // 对话中途热切回默认英文（even with injectPerTurn off） -> 提醒一次，随后静音
   store.updateConfig({ thinkingLanguage: "en", injectPerTurn: false });
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "继续下一步", invocationNum: 3 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "继续下一步", invocationNum: 3 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, true);
   assert.equal(res.reason, "mode_changed");
   assert.match(res.text, /模式已切回默认英文思考/);
 
-  res = store.evaluatePreInvocation({ conversationId: "c1", lastUserInput: "下一轮问题", invocationNum: 1 });
+  res = store.evaluatePreInvocation(
+    { conversationId: "c1", modelName: extModel, lastUserInput: "下一轮问题", invocationNum: 1 },
+    evalOpts
+  );
   assert.equal(res.shouldInject, false);
 
   // 验证会话记录裁剪上限
   for (let i = 0; i < MAX_STATE_CONVERSATIONS + 15; i += 1) {
-    store.evaluatePreInvocation({ conversationId: `conv-${i}`, lastUserInput: `q-${i}`, invocationNum: 1 });
+    store.evaluatePreInvocation(
+      { conversationId: `conv-${i}`, modelName: extModel, lastUserInput: `q-${i}`, invocationNum: 1 },
+      evalOpts
+    );
   }
   const savedState = store.loadState();
   assert.equal(Object.keys(savedState.conversations).length, MAX_STATE_CONVERSATIONS);
 });
 
-test("SessionStart and PreInvocation hooks follow Antigravity camelCase contract and fail-open", async (t) => {
-  const { dataDir, pluginDir } = makeTempEnv(t);
+test("SessionStart and PreInvocation hooks enforce external-model-only guard and fail-open", async (t) => {
+  const { dataDir, pluginDir, customModelsPath } = makeTempEnv(t);
   const store = new ThinkZhStore({ dataDir, pluginDir });
-  const hookEnv = { THINK_ZH_DATA_DIR: dataDir, PLUGIN_ROOT: pluginDir };
+  const hookEnv = {
+    THINK_ZH_DATA_DIR: dataDir,
+    PLUGIN_ROOT: pluginDir,
+    THINK_ZH_CUSTOM_MODELS_PATH: customModelsPath
+  };
 
   // SessionStart 默认关闭 -> {}
-  let out = await runHookProcess("hooks/session-start.mjs", JSON.stringify({ conversationId: "h1" }), hookEnv);
+  let out = await runHookProcess(
+    "hooks/session-start.mjs",
+    JSON.stringify({ conversationId: "h1", modelName: "models/deepseek-r1-custom" }),
+    hookEnv
+  );
   assert.equal(out.code, 0);
   assert.deepEqual(JSON.parse(out.stdout), {});
 
   // 开启 SessionStart + PreInvocation
   store.updateConfig({ injectSessionStart: true, injectPerTurn: true });
-  out = await runHookProcess("hooks/session-start.mjs", JSON.stringify({ conversationId: "h1" }), hookEnv);
+
+  // 原生 Gemini 模型 -> SessionStart 和 PreInvocation 都必须静默返回 {}
+  out = await runHookProcess(
+    "hooks/session-start.mjs",
+    JSON.stringify({ conversationId: "h-native", modelName: "gemini-4-neon-high" }),
+    hookEnv
+  );
+  assert.equal(out.code, 0);
+  assert.deepEqual(JSON.parse(out.stdout), {});
+
+  out = await runHookProcess(
+    "hooks/pre-invocation.mjs",
+    JSON.stringify({
+      conversationId: "h-native",
+      modelName: "gemini-4-neon-high",
+      lastUserInput: "Explain this stacktrace",
+      invocationNum: 1
+    }),
+    hookEnv
+  );
+  assert.equal(out.code, 0);
+  assert.deepEqual(JSON.parse(out.stdout), {});
+
+  // 外部自定义模型 -> SessionStart 正常注入
+  out = await runHookProcess(
+    "hooks/session-start.mjs",
+    JSON.stringify({ conversationId: "h1", modelName: "models/deepseek-r1-custom" }),
+    hookEnv
+  );
   assert.equal(out.code, 0);
   const ssJson = JSON.parse(out.stdout);
   assert.equal(typeof ssJson.injectSteps[0].systemMessage.systemMessage, "string");
   assert.match(ssJson.injectSteps[0].systemMessage.systemMessage, /简体中文思考模式已激活/);
 
-  // PreInvocation 首步注入，同轮第二步去重
+  // 外部自定义模型 -> PreInvocation 首步注入，同轮第二步去重
   out = await runHookProcess(
     "hooks/pre-invocation.mjs",
-    JSON.stringify({ conversationId: "h2", lastUserInput: "Explain this stacktrace", invocationNum: 1 }),
+    JSON.stringify({
+      conversationId: "h2",
+      modelName: "models/deepseek-r1-custom",
+      lastUserInput: "Explain this stacktrace",
+      invocationNum: 1
+    }),
     hookEnv
   );
   assert.equal(out.code, 0);
@@ -212,7 +331,12 @@ test("SessionStart and PreInvocation hooks follow Antigravity camelCase contract
 
   out = await runHookProcess(
     "hooks/pre-invocation.mjs",
-    JSON.stringify({ conversationId: "h2", lastUserInput: "Explain this stacktrace", invocationNum: 2 }),
+    JSON.stringify({
+      conversationId: "h2",
+      modelName: "models/deepseek-r1-custom",
+      lastUserInput: "Explain this stacktrace",
+      invocationNum: 2
+    }),
     hookEnv
   );
   assert.equal(out.code, 0);
@@ -279,18 +403,19 @@ test("MCP server supports initialize, tools/list, status, set, preview, and rese
 
   const setRes = await rpc(4, "tools/call", {
     name: "think_zh_set",
-    arguments: { thinkingLanguage: "en", injectPerTurn: true, perTurnScope: "every_invocation" }
+    arguments: { thinkingLanguage: "en", injectPrompt: true, injectPerTurn: true, perTurnScope: "every_invocation" }
   });
   assert.equal(setRes.result.isError, false);
   const setData = JSON.parse(setRes.result.content[0].text);
   assert.equal(setData.config.thinkingLanguage, "en");
+  assert.equal(setData.config.injectPrompt, true);
   assert.equal(setData.config.injectPerTurn, true);
   assert.equal(setData.ruleSynced, true);
   assert.match(fs.readFileSync(path.join(pluginDir, "rules", "AGENTS.md"), "utf8"), /默认行为/);
 
   const previewRes = await rpc(5, "tools/call", {
     name: "think_zh_preview",
-    arguments: { thinkingLanguage: "zh", customText: "只做简短预览" }
+    arguments: { thinkingLanguage: "zh", injectPrompt: true, customText: "只做简短预览" }
   });
   const previewData = JSON.parse(previewRes.result.content[0].text);
   assert.match(previewData.preview.ruleMarkdown, /只做简短预览/);
@@ -301,7 +426,8 @@ test("MCP server supports initialize, tools/list, status, set, preview, and rese
   const resetRes = await rpc(7, "tools/call", { name: "think_zh_reset", arguments: {} });
   const resetData = JSON.parse(resetRes.result.content[0].text);
   assert.equal(resetData.config.thinkingLanguage, "zh");
-  assert.equal(resetData.config.injectPerTurn, false);
+  assert.equal(resetData.config.injectPrompt, false);
+  assert.equal(resetData.config.injectPerTurn, true);
   assert.equal(resetData.ruleSynced, true);
 });
 
@@ -387,5 +513,6 @@ test("Sidecar panel HTTP server enforces token auth and syncs config changes", a
   assert.equal(resetRes.status, 200);
   const resetJson = await resetRes.json();
   assert.equal(resetJson.config.thinkingLanguage, "zh");
-  assert.equal(resetJson.config.injectPerTurn, false);
+  assert.equal(resetJson.config.injectPrompt, false);
+  assert.equal(resetJson.config.injectPerTurn, true);
 });

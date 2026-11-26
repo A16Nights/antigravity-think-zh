@@ -148,6 +148,41 @@
       color: var(--warn);
     }
 
+    .notice-card {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.10), rgba(59, 130, 246, 0.08));
+      border: 1px solid rgba(245, 158, 11, 0.34);
+      border-radius: var(--radius);
+      padding: 11px 13px;
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .notice-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 12.5px;
+      color: var(--warn);
+      margin-bottom: 5px;
+    }
+
+    .notice-list {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--text-sub);
+    }
+
+    .notice-list li {
+      margin: 3px 0;
+    }
+
+    .notice-list strong {
+      color: var(--text);
+    }
+
     .card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -517,15 +552,25 @@
         </svg>
         <div>
           <div class="brand-title">思语中文 · Think-ZH</div>
-          <div class="brand-sub">模型思考语言双通道控制器</div>
+          <div class="brand-sub">外部推理模型思考语言控制器（原生 Gemini 不适用）</div>
         </div>
       </div>
       <div class="badges header-actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span class="badge">仅外部模型</span>
         <span id="langBadge" class="badge">加载中</span>
         <span id="syncBadge" class="badge ok">已同步</span>
         <button type="button" id="btnThemeToggle" title="切换明暗主题" style="padding:4px 8px;font-size:13px;line-height:1;">☀️</button>
       </div>
     </header>
+
+    <section class="notice-card" aria-label="适用范围与原生 Gemini 限制说明">
+      <div class="notice-title">⚠️ 适用范围说明：专为外部模型准备 · 无法对原生 Gemini 生效</div>
+      <ul class="notice-list">
+        <li><strong>仅对外部模型生效</strong>：默认通过外接模型守卫自动识别，仅在使用通过苍蓝星轨等挂载的外部模型（如 DeepSeek、Qwen、GLM、MiniMax 等透传原生 <code>reasoning_content</code> 的模型）时触发；使用 Antigravity 原生模型时自动静默跳过，零额外 Token 消耗。</li>
+        <li><strong>为何无法对原生 Gemini 生效</strong>：Google Cloud Code 服务端不会将 Gemini 的原始内部思考下发到客户端，而是由云端 <strong>Thought Summarizer</strong> 压缩改写成英文第三人称摘要（并附带加密 <code>thoughtSignature</code>）；任何客户端提示词都无法关闭或更改云端摘要器的输出语言。</li>
+        <li><strong>原生 Gemini 替代方案</strong>：若需以中文阅读原生 Gemini 的思考摘要，请使用 <strong>苍蓝棱镜（Azure Prism）</strong> 按需翻译。</li>
+      </ul>
+    </section>
 
     <section class="card">
       <div class="section-title">
@@ -551,23 +596,31 @@
     </section>
 
     <section class="card">
-      <div class="section-title"><span>注入通道</span></div>
+      <div class="section-title"><span>注入通道</span><span style="font-weight:500;text-transform:none;">默认仅对外部模型生效</span></div>
       <div class="switch-list">
         <div class="switch-row">
           <div class="switch-info">
-            <div class="switch-label">静态规则（rules/AGENTS.md）</div>
-            <div class="switch-sub">改动立即同步规则文件，常驻基础约束（推荐开启）</div>
+            <div class="switch-label">每轮前置强化（PreInvocation · 仅外部模型）</div>
+            <div class="switch-sub">默认开启；命中外部自定义模型时按回合去重注入，Antigravity 原生模型自动静默跳过</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" id="chkInjectPrompt" />
+            <input type="checkbox" id="chkPerTurn" />
             <span class="slider"></span>
           </label>
         </div>
 
+        <div id="scopeBox" class="scope-box hidden">
+          <span class="switch-sub" style="font-weight: 600;">每轮强化触发粒度（仅外部模型）</span>
+          <div class="seg">
+            <button type="button" class="seg-btn" id="scopeUserTurn" data-scope="per_user_turn">每轮提问一次</button>
+            <button type="button" class="seg-btn" id="scopeEveryInv" data-scope="every_invocation">每次调用模型</button>
+          </div>
+        </div>
+
         <div class="switch-row">
           <div class="switch-info">
-            <div class="switch-label">新会话开场注入（SessionStart）</div>
-            <div class="switch-sub">新建对话首步追加一次高权重系统提醒</div>
+            <div class="switch-label">新会话开场注入（SessionStart · 仅外部模型）</div>
+            <div class="switch-sub">仅当会话启动入参识别为外部模型时追加一次高权重系统提醒</div>
           </div>
           <label class="toggle">
             <input type="checkbox" id="chkSessionStart" />
@@ -577,21 +630,13 @@
 
         <div class="switch-row">
           <div class="switch-info">
-            <div class="switch-label">每轮前置强化（PreInvocation）</div>
-            <div class="switch-sub">对长对话/大量英文工具日志下易切回英文思考的模型有效</div>
+            <div class="switch-label">静态全局规则兜底（rules/AGENTS.md · 默认关闭）</div>
+            <div class="switch-sub">可选兼容开关：开启后宿主会无差别加载给所有模型（含原生 Gemini），日常建议保持关闭</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" id="chkPerTurn" />
+            <input type="checkbox" id="chkInjectPrompt" />
             <span class="slider"></span>
           </label>
-        </div>
-      </div>
-
-      <div id="scopeBox" class="scope-box hidden">
-        <span class="switch-sub" style="font-weight: 600;">每轮强化触发粒度</span>
-        <div class="seg">
-          <button type="button" class="seg-btn" id="scopeUserTurn" data-scope="per_user_turn">每轮提问一次</button>
-          <button type="button" class="seg-btn" id="scopeEveryInv" data-scope="every_invocation">每次调用模型</button>
         </div>
       </div>
     </section>
@@ -614,16 +659,16 @@
         <span id="previewChars" style="font-weight: 500; text-transform: none;">0 字</span>
       </div>
       <div class="tabs">
-        <button type="button" class="tab active" data-tab="rule">静态规则</button>
-        <button type="button" class="tab" data-tab="perTurn">每轮提示</button>
+        <button type="button" class="tab active" data-tab="perTurn">每轮提示（默认）</button>
         <button type="button" class="tab" data-tab="sessionStart">开场注入</button>
+        <button type="button" class="tab" data-tab="rule">静态兜底</button>
       </div>
       <pre class="preview" id="previewBox">加载中…</pre>
     </section>
 
     <footer class="footer">
       <div class="footer-actions">
-        <span>能力边界：思考语言属于模型自身推理行为，插件仅做提示词强力引导，不能在模型底层 100% 硬锁。</span>
+        <span>能力边界：仅对透传原始思考的外部推理模型生效；原生 Gemini 思考框由 Google 云端摘要器统一输出英文，无法通过本插件修改。</span>
         <button type="button" class="btn danger" id="btnReset">恢复默认</button>
       </div>
     </footer>
@@ -634,7 +679,7 @@
   <script>
     const token = new URLSearchParams(window.location.search).get("token") || "";
     let currentState = null;
-    let activeTab = "rule";
+    let activeTab = "perTurn";
     let resetConfirmTimer = null;
     let awaitingResetConfirm = false;
 

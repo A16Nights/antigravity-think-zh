@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { ThinkZhStore, buildSessionStartText } from "../lib/store.mjs";
+import { isExternalModel } from "../lib/external-model-guard.mjs";
 
 function readStdin() {
   return new Promise((resolve) => {
@@ -14,7 +15,21 @@ function readStdin() {
 }
 
 async function main() {
-  await readStdin();
+  const raw = await readStdin();
+  let input = {};
+  if (raw) {
+    try {
+      input = JSON.parse(raw);
+    } catch {
+      process.stdout.write("{}\n");
+      return;
+    }
+  }
+  // 仅对使用外接自定义模型时生效；Antigravity 原生模型（含 Gemini）自动跳过
+  if (!isExternalModel(input)) {
+    process.stdout.write("{}\n");
+    return;
+  }
   const store = new ThinkZhStore();
   const cfg = store.loadConfig();
   if (!cfg.injectSessionStart) {
