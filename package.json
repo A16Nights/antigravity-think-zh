@@ -1,6 +1,6 @@
 {
   "name": "antigravity-think-zh",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Simplified Chinese thinking/reasoning language controller for external custom models in Antigravity (auto-skips native Gemini/Antigravity models).",
   "type": "module",
   "license": "MIT",

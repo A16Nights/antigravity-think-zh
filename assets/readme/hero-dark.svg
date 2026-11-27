@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" role="img" aria-label="思语中文">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" role="img" aria-label="思语中文——外接模型中文思考切换">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#091122"/>
@@ -62,10 +62,10 @@
     </g>
 
     <!-- Main Title -->
-    <text x="176" y="132" font-size="44" font-weight="800" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">思语中文</text>
+    <text x="176" y="128" font-size="33" font-weight="800" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">思语中文——外接模型中文思考切换</text>
 
     <!-- Secondary Title -->
-    <text x="176" y="164" font-size="18" font-weight="600" fill="#94a3b8" letter-spacing="0.4" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Think-ZH</text>
+    <text x="176" y="160" font-size="16" font-weight="600" fill="#94a3b8" letter-spacing="0.4" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Think-ZH — Chinese Reasoning Switcher</text>
 
     <!-- Subtitle -->
     <text x="176" y="196" font-size="15.5" font-weight="500" fill="#cbd5e1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">思考语言双档热切换 · 双通道强化与外接模型防漂移 · 自定义指令实时预览</text>

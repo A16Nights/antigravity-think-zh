@@ -1,8 +1,8 @@
 {
   "name": "think-zh",
-  "displayName": "思语中文 · Think-ZH",
-  "version": "1.2.0",
-  "description": "思语中文（Think-ZH）— 面向外部推理模型的内部思考语言控制插件：专为通过苍蓝星轨等挂载的外部自定义模型设计，默认仅在使用外部模型时通过 PreInvocation 守卫生效（Antigravity 原生模型自动静默跳过）；无法对原生 Gemini 生效（Google 服务端 Thought Summarizer 仅下发英文第三人称摘要，不下发原始思考）。",
+  "displayName": "思语中文——外接模型中文思考切换",
+  "version": "1.2.1",
+  "description": "思语中文——外接模型中文思考切换（Think-ZH）：面向外部推理模型的内部思考语言控制插件：专为通过苍蓝星轨等挂载的外部自定义模型设计，默认仅在使用外部模型时通过 PreInvocation 守卫生效（Antigravity 原生模型自动静默跳过）；无法对原生 Gemini 生效（Google 服务端 Thought Summarizer 仅下发英文第三人称摘要，不下发原始思考）；内置首次使用交互式新手引导与真实控件定位高亮。",
   "logo": "assets/logo.svg",
   "author": {
     "name": "A16Nights",

@@ -2,6 +2,8 @@ import { checkGithubUpdate } from "../../lib/update-checker.mjs";
 import { isLeftSidebarEnabled, setLeftSidebarEnabled, listOwnedPluginsNavState, registerSidecarRuntime, refreshAntigravityMcpServers, injectSidebarToggleWidget } from "../../lib/sidebar-nav.mjs";
 import { handleAzureThemeHttp } from "../../lib/azure-theme.mjs";
 import { injectAzureUiKit } from "../../lib/azure-ui-kit.mjs";
+import { handleAzureOnboardingHttp, injectAzureOnboarding } from "../../lib/azure-onboarding.mjs";
+import { THINK_ZH_ONBOARDING_GUIDE } from "./onboarding-guide.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
@@ -117,7 +119,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
     const html = fs.readFileSync(HTML_PATH, "utf8");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(injectAzureUiKit(injectSidebarToggleWidget(html, "think-zh"), "think-zh"));
+    res.end(injectAzureOnboarding(injectAzureUiKit(injectSidebarToggleWidget(html, "think-zh"), "think-zh"), "think-zh", THINK_ZH_ONBOARDING_GUIDE));
     return;
   }
 
@@ -135,6 +137,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (await handleAzureThemeHttp(req, res)) return;
+    if (await handleAzureOnboardingHttp(req, res, "think-zh", THINK_ZH_ONBOARDING_GUIDE.version)) return;
     if (req.method === "GET" && pathname === "/api/sidebar-nav") {
         sendJson(res, 200, {
           ok: true,
